@@ -154,7 +154,7 @@ function TableVis(element, props) {
           html = `<span class="like-pre">${dompurify.sanitize(val)}</span>`;
         }
         if (isMetric) {
-          html = getNumberFormatter(format)(val);
+          html = getNumberFormatter(',d')(val);
         }
         if (key[0] === '%') {
           html = formatPercent(val);
