@@ -62,7 +62,7 @@ const propTypes = {
 
 const formatValue = getNumberFormatter(NumberFormats.INTEGER);
 const formatPercent = getNumberFormatter(',%');
-function NOOP() {}
+const NOOP = () => {};
 
 function TableVis(element, props) {
   const {

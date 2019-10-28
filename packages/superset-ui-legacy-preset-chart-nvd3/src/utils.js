@@ -55,7 +55,7 @@ export function drawBarValues(svg, data, stacked, axisFormat) {
   const totalStackedValues =
     stacked && data.length !== 0
       ? data[0].values.map((bar, iBar) => {
-          const bars = data.map(series => series.values[iBar]);
+          const bars = data.filter(series => !series.disabled).map(series => series.values[iBar]);
 
           return d3.sum(bars, d => d.y);
         })
@@ -267,6 +267,18 @@ export function hideTooltips(shouldRemove) {
   }
 }
 
+export function generateTooltipClassName(uuid) {
+  return `tooltip-${uuid}`;
+}
+
+export function removeTooltip(uuid) {
+  const classSelector = `.${generateTooltipClassName(uuid)}`;
+  const target = document.querySelector(classSelector);
+  if (target) {
+    target.remove();
+  }
+}
+
 export function wrapTooltip(chart, maxWidth) {
   const tooltipLayer =
     chart.useInteractiveGuideline && chart.useInteractiveGuideline()
@@ -362,11 +374,22 @@ export function setAxisShowMaxMin(axis, showminmax) {
 
 export function computeYDomain(data) {
   if (Array.isArray(data) && data.length > 0 && Array.isArray(data[0].values)) {
-    const extents = data.map(row => d3.extent(row.values, v => v.y));
+    const extents = data.filter(d => !d.disabled).map(row => d3.extent(row.values, v => v.y));
     const minOfMin = d3.min(extents, ([min]) => min);
     const maxOfMax = d3.max(extents, ([, max]) => max);
 
     return [minOfMin, maxOfMax];
+  }
+
+  return [0, 1];
+}
+
+export function computeStackedYDomain(data) {
+  if (Array.isArray(data) && data.length > 0 && Array.isArray(data[0].values)) {
+    const series = data.filter(d => !d.disabled).map(d => d.values.map(v => v.y));
+    const stackedValues = series[0].map((_, i) => series.reduce((acc, cur) => acc + cur[i], 0));
+
+    return [Math.min(0, ...stackedValues), Math.max(0, ...stackedValues)];
   }
 
   return [0, 1];

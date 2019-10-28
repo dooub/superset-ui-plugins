@@ -36,21 +36,24 @@ import isTruthy from './utils/isTruthy';
 import {
   cleanColorInput,
   computeBarChartWidth,
+  computeYDomain,
+  computeStackedYDomain,
   drawBarValues,
   generateBubbleTooltipContent,
   generateMultiLineTooltipContent,
   generateRichLineTooltipContent,
   generateTimePivotTooltip,
+  generateTooltipClassName,
   generateAreaChartTooltipContent,
   getMaxLabelSize,
   getTimeOrNumberFormatter,
   hideTooltips,
   tipFactory,
   tryNumify,
+  removeTooltip,
   setAxisShowMaxMin,
   stringifyTimeRange,
   wrapTooltip,
-  computeYDomain,
 } from './utils';
 import {
   annotationLayerType,
@@ -253,6 +256,10 @@ function nvd3Vis(element, props) {
   const container = element;
   container.innerHTML = '';
   const activeAnnotationLayers = annotationLayers.filter(layer => layer.show);
+  const chartId =
+    container.parentElement && container.parentElement.id !== ''
+      ? container.parentElement.id
+      : null;
 
   let chart;
   let width = maxWidth;
@@ -442,7 +449,7 @@ function nvd3Vis(element, props) {
 
     if (showBarValue) {
       drawBarValues(svg, data, isBarStacked, yAxisFormat);
-      chart.dispatch.on('stateChange', () => {
+      chart.dispatch.on('stateChange.drawBarValues', () => {
         drawBarValues(svg, data, isBarStacked, yAxisFormat);
       });
     }
@@ -560,7 +567,7 @@ function nvd3Vis(element, props) {
         chart.interactiveLayer.tooltip.contentGenerator(d =>
           generateRichLineTooltipContent(d, smartDateVerboseFormatter, yAxisFormatter),
         );
-      } else {
+      } else if (areaStackedStyle !== 'expand') {
         // area chart
         chart.interactiveLayer.tooltip.contentGenerator(d =>
           generateAreaChartTooltipContent(d, smartDateVerboseFormatter, yAxisFormatter),
@@ -609,29 +616,53 @@ function nvd3Vis(element, props) {
       xTicks.selectAll('text').attr('dx', -6.5);
     }
 
-    // Apply y-axis bounds
-    if (chart.yDomain && Array.isArray(yAxisBounds) && yAxisBounds.length === 2) {
-      const [min, max] = yAxisBounds;
-      const hasCustomMin = isDefined(min) && !Number.isNaN(min);
-      const hasCustomMax = isDefined(max) && !Number.isNaN(max);
-      let yMin;
-      let yMax;
-      if (hasCustomMin && hasCustomMax) {
-        yMin = min;
-        yMax = max;
-      } else {
-        let [trueMin, trueMax] = [0, 1];
-        // These viz types can be stacked
-        if (isVizTypes(['area', 'bar', 'dist_bar'])) {
-          [trueMin, trueMax] = chart.yAxis.scale().domain();
-        } else {
-          [trueMin, trueMax] = computeYDomain(data);
+    const applyYAxisBounds = () => {
+      if (chart.yDomain && Array.isArray(yAxisBounds) && yAxisBounds.length === 2) {
+        const [customMin, customMax] = yAxisBounds;
+        const hasCustomMin = isDefined(customMin) && !Number.isNaN(customMin);
+        const hasCustomMax = isDefined(customMax) && !Number.isNaN(customMax);
+
+        if ((hasCustomMin || hasCustomMax) && vizType === 'area' && chart.style() === 'expand') {
+          // Because there are custom bounds, we need to override them back to 0%-100% since this
+          // is an expanded area chart
+          chart.yDomain([0, 1]);
+        } else if (
+          (hasCustomMin || hasCustomMax) &&
+          vizType === 'area' &&
+          chart.style() === 'stream'
+        ) {
+          // Because there are custom bounds, we need to override them back to the domain of the
+          // data since this is a stream area chart
+          chart.yDomain(computeStackedYDomain(data));
+        } else if (hasCustomMin && hasCustomMax) {
+          // Override the y domain if there's both a custom min and max
+          chart.yDomain([customMin, customMax]);
+          chart.clipEdge(true);
+        } else if (hasCustomMin || hasCustomMax) {
+          // Only one of the bounds has been set, so we need to manually calculate the other one
+          let [trueMin, trueMax] = [0, 1];
+
+          // These viz types can be stacked
+          // They correspond to the nvd3 stackedAreaChart and multiBarChart
+          if (vizType === 'area' || (isVizTypes(['bar', 'dist_bar']) && chart.stacked())) {
+            // This is a stacked area chart or a stacked bar chart
+            [trueMin, trueMax] = computeStackedYDomain(data);
+          } else {
+            [trueMin, trueMax] = computeYDomain(data);
+          }
+
+          const min = hasCustomMin ? customMin : trueMin;
+          const max = hasCustomMax ? customMax : trueMax;
+          chart.yDomain([min, max]);
+          chart.clipEdge(true);
         }
-        yMin = hasCustomMin ? min : trueMin;
-        yMax = hasCustomMax ? max : trueMax;
       }
-      chart.yDomain([yMin, yMax]);
-      chart.clipEdge(true);
+    };
+    applyYAxisBounds();
+
+    // Also reapply on each state change to account for enabled/disabled series
+    if (chart.dispatch && chart.dispatch.stateChange) {
+      chart.dispatch.on('stateChange.applyYAxisBounds', applyYAxisBounds);
     }
 
     // align yAxis1 and yAxis2 ticks
@@ -675,7 +706,7 @@ function nvd3Vis(element, props) {
 
       // redo on legend toggle; nvd3 calls the callback *before* the line is
       // drawn, so we need to add a small delay here
-      chart.dispatch.on('stateChange', () => {
+      chart.dispatch.on('stateChange.showMarkers', () => {
         setTimeout(() => {
           svg
             .selectAll('.nv-point')
@@ -777,6 +808,18 @@ function nvd3Vis(element, props) {
             [],
           );
         data.push(...timeSeriesAnnotations);
+      }
+
+      // Uniquely identify tooltips based on chartId so this chart instance only
+      // controls its own tooltips
+      if (chartId) {
+        if (chart && chart.interactiveLayer && chart.interactiveLayer.tooltip) {
+          chart.interactiveLayer.tooltip.classes([generateTooltipClassName(chartId)]);
+        }
+
+        if (chart && chart.tooltip) {
+          chart.tooltip.classes([generateTooltipClassName(chartId)]);
+        }
       }
 
       // render chart
@@ -1056,7 +1099,11 @@ function nvd3Vis(element, props) {
   // Remove tooltips before rendering chart, if the chart is being re-rendered sometimes
   // there are left over tooltips in the dom,
   // this will clear them before rendering the chart again.
-  hideTooltips(true);
+  if (chartId) {
+    removeTooltip(chartId);
+  } else {
+    hideTooltips(true);
+  }
 
   nv.addGraph(drawGraph);
 }

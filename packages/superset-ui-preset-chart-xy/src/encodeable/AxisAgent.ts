@@ -1,10 +1,9 @@
 /* eslint-disable no-magic-numbers */
 import { CSSProperties } from 'react';
-import { Value } from 'vega-lite/build/src/channeldef';
-import { getTextDimension } from '@superset-ui/dimension';
+import { getTextDimension, Margin, Dimension } from '@superset-ui/dimension';
 import { CategoricalColorScale } from '@superset-ui/color';
 import { extractFormatFromTypeAndFormat } from './parsers/extractFormat';
-import { CoreAxis, LabelOverlapStrategy } from './types/Axis';
+import { CoreAxis, LabelOverlapStrategy, AxisOrient } from './types/Axis';
 import { PositionFieldDef, ChannelDef } from './types/ChannelDef';
 import ChannelEncoder from './ChannelEncoder';
 import { DEFAULT_LABEL_ANGLE } from '../utils/constants';
@@ -31,12 +30,25 @@ const DEFAULT_Y_CONFIG: CoreAxis = {
   orient: 'left',
 };
 
-export default class AxisAgent<Def extends ChannelDef<Output>, Output extends Value = Value> {
-  private readonly channelEncoder: ChannelEncoder<Def, Output>;
+export interface AxisLayout {
+  axisWidth: number;
+  labelAngle: number;
+  labelFlush: number | boolean;
+  labelOffset: number;
+  labelOverlap: 'flat' | 'rotate';
+  minMargin: Partial<Margin>;
+  orient: AxisOrient;
+  tickLabelDimensions: Dimension[];
+  tickLabels: string[];
+  tickTextAnchor?: string;
+}
+
+export default class AxisAgent<Def extends ChannelDef> {
+  private readonly channelEncoder: ChannelEncoder<Def>;
   private readonly format?: (value: any) => string;
   readonly config: CoreAxis;
 
-  constructor(channelEncoder: ChannelEncoder<Def, Output>) {
+  constructor(channelEncoder: ChannelEncoder<Def>) {
     this.channelEncoder = channelEncoder;
     const definition = channelEncoder.definition as PositionFieldDef;
     const { type, axis = {} } = definition;
@@ -54,8 +66,20 @@ export default class AxisAgent<Def extends ChannelDef<Output>, Output extends Va
     return this.format || this.channelEncoder.formatValue;
   }
 
+  hasTitle() {
+    return this.getTitle() !== '';
+  }
+
   getTitle() {
-    return this.config.title || this.channelEncoder.getTitle();
+    const { title } = this.config;
+
+    if (title === undefined || title === true) {
+      return this.channelEncoder.getTitle();
+    } else if (title === false || title === '') {
+      return '';
+    }
+
+    return title;
   }
 
   getTickLabels() {
@@ -79,26 +103,27 @@ export default class AxisAgent<Def extends ChannelDef<Output>, Output extends Va
     return [];
   }
 
+  // eslint-disable-next-line complexity
   computeLayout({
-    axisLabelHeight = 20,
+    axisTitleHeight = 20,
     axisWidth,
-    gapBetweenAxisLabelAndBorder = 8,
+    gapBetweenAxisLabelAndBorder = 4,
     gapBetweenTickAndTickLabel = 4,
     labelAngle = this.config.labelAngle,
-    tickLength,
-    tickTextStyle,
+    tickSize = 8,
+    tickTextStyle = {},
   }: {
-    axisLabelHeight?: number;
+    axisTitleHeight?: number;
     axisWidth: number;
     gapBetweenAxisLabelAndBorder?: number;
     gapBetweenTickAndTickLabel?: number;
     labelAngle?: number;
-    tickLength: number;
-    tickTextStyle: CSSProperties;
-  }) {
+    tickSize?: number;
+    tickTextStyle?: CSSProperties;
+  }): AxisLayout {
     const tickLabels = this.getTickLabels();
 
-    const labelDimensions = tickLabels.map((text: string) =>
+    const tickLabelDimensions = tickLabels.map((text: string) =>
       getTextDimension({
         style: tickTextStyle,
         text,
@@ -107,71 +132,63 @@ export default class AxisAgent<Def extends ChannelDef<Output>, Output extends Va
 
     const { labelOverlap, labelPadding, orient } = this.config;
 
-    const maxWidth = Math.max(...labelDimensions.map(d => d.width));
+    const maxWidth = Math.max(...tickLabelDimensions.map(d => d.width), 0);
 
     // TODO: Add other strategies: stagger, chop, wrap.
-    let strategy = labelOverlap;
-    if (strategy === 'auto') {
+    let strategyForLabelOverlap = labelOverlap;
+    if (strategyForLabelOverlap === 'auto') {
       // cheap heuristic, can improve
       const widthPerTick = axisWidth / tickLabels.length;
       if (this.channelEncoder.isY() || maxWidth <= widthPerTick) {
-        strategy = 'flat';
+        strategyForLabelOverlap = 'flat';
       } else {
-        strategy = 'rotate';
+        strategyForLabelOverlap = 'rotate';
       }
     }
+
+    const spaceForAxisTitle = this.hasTitle() ? labelPadding + axisTitleHeight : 0;
+    let tickTextAnchor;
+    let labelOffset: number = 0;
+    let requiredMargin =
+      tickSize + gapBetweenTickAndTickLabel + spaceForAxisTitle + gapBetweenAxisLabelAndBorder;
 
     if (this.channelEncoder.isX()) {
-      let labelOffset = 0;
-      let layout: {
-        labelAngle: number;
-        tickTextAnchor?: string;
-      } = { labelAngle };
-
-      if (strategy === 'flat') {
-        labelOffset = labelDimensions[0].height + labelPadding;
-        layout = { labelAngle: 0 };
-      } else if (strategy === 'rotate') {
+      if (strategyForLabelOverlap === 'flat') {
+        const labelHeight = tickLabelDimensions.length > 0 ? tickLabelDimensions[0].height : 0;
+        labelOffset = labelHeight + labelPadding;
+        requiredMargin += labelHeight;
+      } else if (strategyForLabelOverlap === 'rotate') {
         const labelHeight = Math.ceil(Math.abs(maxWidth * Math.sin((labelAngle * Math.PI) / 180)));
         labelOffset = labelHeight + labelPadding;
-        layout = {
-          labelAngle,
-          tickTextAnchor:
-            (orient === 'top' && labelAngle > 0) || (orient === 'bottom' && labelAngle < 0)
-              ? 'end'
-              : 'start',
-        };
+        requiredMargin += labelHeight;
+        tickTextAnchor =
+          (orient === 'top' && labelAngle > 0) || (orient === 'bottom' && labelAngle < 0)
+            ? 'end'
+            : 'start';
       }
-
-      return {
-        ...layout,
-        labelOffset,
-        labelOverlap: strategy,
-        minMargin: {
-          [orient]: Math.ceil(
-            tickLength +
-              gapBetweenTickAndTickLabel +
-              labelOffset +
-              axisLabelHeight +
-              gapBetweenAxisLabelAndBorder +
-              8,
-          ),
-        },
-        orient,
-      };
+      requiredMargin += 8;
+    } else {
+      labelOffset = maxWidth + spaceForAxisTitle;
+      requiredMargin += maxWidth;
     }
 
-    const labelOffset = Math.ceil(maxWidth + labelPadding + axisLabelHeight);
-
     return {
-      labelAngle,
+      axisWidth,
+      labelAngle: strategyForLabelOverlap === 'flat' ? 0 : labelAngle,
+      labelFlush:
+        typeof this.config.labelFlush === 'undefined'
+          ? // If not set, only enable flushing for continuous scales
+            this.channelEncoder.scale!.scaleTypeCategory === 'continuous'
+          : this.config.labelFlush,
       labelOffset,
-      labelOverlap,
+      labelOverlap: strategyForLabelOverlap,
       minMargin: {
-        [orient]:
-          tickLength + gapBetweenTickAndTickLabel + labelOffset + gapBetweenAxisLabelAndBorder,
+        [orient]: Math.ceil(requiredMargin),
       },
       orient,
+      tickLabelDimensions,
+      tickLabels,
+      tickTextAnchor,
     };
   }
 }

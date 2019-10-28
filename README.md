@@ -1,6 +1,6 @@
 # @superset-ui/plugins 🔌💡
 
-[![Codecov branch](https://img.shields.io/codecov/c/github/apache-superset/superset-ui-plugins/master.svg?style=flat-square)](http://codecov.io/github/apache-superset/superset-ui-plugins/coverage.svg?branch=master)
+[![Codecov branch](https://img.shields.io/codecov/c/github/apache-superset/superset-ui-plugins/master.svg?style=flat-square)](https://codecov.io/gh/apache-superset/superset-ui-plugins/branch/master)
 [![Build Status](https://img.shields.io/travis/com/apache-superset/superset-ui-plugins/master.svg?style=flat-square
 )](https://travis-ci.com/apache-superset/superset-ui-plugins)
 [![David](https://img.shields.io/david/dev/apache-superset/superset-ui-plugins.svg?style=flat-square)](https://david-dm.org/apache-superset/superset-ui-plugins?type=dev)
@@ -26,10 +26,10 @@ Current master: https://superset-ui-plugins.netlify.com
 
 ## Packages
 
-| Package | Version |
-|--|--|
-| [@superset-ui/plugin-chart-word-cloud](https://github.com/apache-superset/superset-ui/tree/master/packages/superset-ui-plugin-chart-word-cloud) | [![Version](https://img.shields.io/npm/v/@superset-ui/plugin-chart-word-cloud.svg?style=flat-square)](https://img.shields.io/npm/v/@superset-ui/plugin-chart-word-cloud.svg?style=flat-square) |
-
+| Package | Version | Note |
+|--|--|--|
+| [@superset-ui/plugin-chart-word-cloud](https://github.com/apache-superset/superset-ui/tree/master/packages/superset-ui-plugin-chart-word-cloud) | [![Version](https://img.shields.io/npm/v/@superset-ui/plugin-chart-word-cloud.svg?style=flat-square)](https://img.shields.io/npm/v/@superset-ui/plugin-chart-word-cloud.svg?style=flat-square) | |
+| [@superset-ui/preset-chart-xy](https://github.com/apache-superset/superset-ui/tree/master/packages/superset-ui-preset-chart-xy) | [![Version](https://img.shields.io/npm/v/@superset-ui/preset-chart-xy.svg?style=flat-square)](https://img.shields.io/npm/v/@superset-ui/preset-chart-xy.svg?style=flat-square) | experimental |
 
 | Package | Version |
 |--|--|
@@ -52,6 +52,7 @@ Current master: https://superset-ui-plugins.netlify.com
 | [@superset-ui/legacy-plugin-chart-pivot-table](https://github.com/apache-superset/superset-ui-plugins/tree/master/packages/superset-ui-legacy-plugin-chart-pivot-table) | [![Version](https://img.shields.io/npm/v/@superset-ui/legacy-plugin-chart-pivot-table.svg?style=flat-square)](https://img.shields.io/npm/v/@superset-ui/legacy-plugin-chart-pivot-table.svg?style=flat-square) |
 | [@superset-ui/legacy-plugin-chart-rose](https://github.com/apache-superset/superset-ui-plugins/tree/master/packages/superset-ui-legacy-plugin-chart-rose) | [![Version](https://img.shields.io/npm/v/@superset-ui/legacy-plugin-chart-rose.svg?style=flat-square)](https://img.shields.io/npm/v/@superset-ui/legacy-plugin-chart-rose.svg?style=flat-square) |
 | [@superset-ui/legacy-plugin-chart-sankey](https://github.com/apache-superset/superset-ui-plugins/tree/master/packages/superset-ui-legacy-plugin-chart-sankey) | [![Version](https://img.shields.io/npm/v/@superset-ui/legacy-plugin-chart-sankey.svg?style=flat-square)](https://img.shields.io/npm/v/@superset-ui/legacy-plugin-chart-sankey.svg?style=flat-square) |
+| [@superset-ui/legacy-plugin-chart-sankey-loop](https://github.com/apache-superset/superset-ui-plugins/tree/master/packages/superset-ui-legacy-plugin-chart-sankey-loop) | [![Version](https://img.shields.io/npm/v/@superset-ui/legacy-plugin-chart-sankey-loop.svg?style=flat-square)](https://img.shields.io/npm/v/@superset-ui/legacy-plugin-chart-sankey-loop.svg?style=flat-square) |
 | [@superset-ui/legacy-plugin-chart-sunburst](https://github.com/apache-superset/superset-ui-plugins/tree/master/packages/superset-ui-legacy-plugin-chart-sunburst) | [![Version](https://img.shields.io/npm/v/@superset-ui/legacy-plugin-chart-sunburst.svg?style=flat-square)](https://img.shields.io/npm/v/@superset-ui/legacy-plugin-chart-sunburst.svg?style=flat-square) |
 | [@superset-ui/legacy-plugin-chart-table](https://github.com/apache-superset/superset-ui-plugins/tree/master/packages/superset-ui-legacy-plugin-chart-table) | [![Version](https://img.shields.io/npm/v/@superset-ui/legacy-plugin-chart-table.svg?style=flat-square)](https://img.shields.io/npm/v/@superset-ui/legacy-plugin-chart-table.svg?style=flat-square) |
 | [@superset-ui/legacy-plugin-chart-treemap](https://github.com/apache-superset/superset-ui-plugins/tree/master/packages/superset-ui-legacy-plugin-chart-treemap) | [![Version](https://img.shields.io/npm/v/@superset-ui/legacy-plugin-chart-treemap.svg?style=flat-square)](https://img.shields.io/npm/v/@superset-ui/legacy-plugin-chart-treemap.svg?style=flat-square) |
@@ -96,6 +97,17 @@ yarn build
 
 Each package defines its own build config, linting, and testing. You can have lerna run commands
 across all packages using the syntax `yarn run test` (or `yarn run test:watch` for watch mode) from the root `@superset-ui` directory.
+
+#### Storybook
+
+You can demo your changes by running the storybook demo locally with the following commands:
+
+```sh
+yarn install
+yarn build
+cd packages/superset-ui-plugins-demo
+yarn storybook
+```
 
 ### Committing
 

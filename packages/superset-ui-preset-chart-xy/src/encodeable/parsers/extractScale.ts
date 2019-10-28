@@ -26,7 +26,12 @@ import {
 import { Value } from 'vega-lite/build/src/channeldef';
 import { Type } from 'vega-lite/build/src/type';
 import { ScaleType } from 'vega-lite/build/src/scale';
-import { isNonValueDef, ChannelDef } from '../types/ChannelDef';
+import {
+  isNonValueDef,
+  ChannelDef,
+  ExtractChannelOutput,
+  isTypedFieldDef,
+} from '../types/ChannelDef';
 import isDisabled from '../utils/isDisabled';
 import { ChannelType } from '../types/Channel';
 import { Scale } from '../types/Scale';
@@ -48,6 +53,7 @@ export interface ScaleAgent<Output extends Value> {
     | ScaleOrdinal<{ toString(): string }, Output>
     | ScalePoint<{ toString(): string }>
     | ScaleBand<{ toString(): string }>;
+  scaleTypeCategory: 'continuous' | 'discrete' | 'discretizing' | undefined;
 }
 
 export interface ScaleTypeToD3ScaleType<Output> {
@@ -77,9 +83,13 @@ export function deriveScaleTypeFromDataTypeAndChannelType(
     return undefined;
   } else if (dataType === 'nominal' || dataType === 'ordinal') {
     switch (channelType) {
+      // For positional (x and y) ordinal and ordinal fields,
+      // "point" is the default scale type for all marks
+      // except bar and rect marks, which use "band" scales.
+      // https://vega.github.io/vega-lite/docs/scale.html
       case 'XBand':
       case 'YBand':
-        return ScaleType.POINT;
+        return ScaleType.BAND;
       case 'X':
       case 'Y':
       case 'Numeric':
@@ -195,14 +205,37 @@ function createScale<Output extends Value>(
   return scale;
 }
 
-export default function extractScale<Output extends Value>(
+const continuousScaleTypes = new Set(['linear', 'pow', 'sqrt', 'symlog', 'log', 'time', 'utc']);
+const discreteScaleTypes = new Set(['band', 'point', 'ordinal']);
+const discretizingScaleTypes = new Set(['bin-ordinal', 'quantile', 'quantize', 'threshold']);
+
+function getScaleTypeCategory(scaleType: ScaleType) {
+  if (continuousScaleTypes.has(scaleType)) {
+    return 'continuous';
+  }
+  if (discreteScaleTypes.has(scaleType)) {
+    return 'discrete';
+  }
+  if (discretizingScaleTypes.has(scaleType)) {
+    return 'discretizing';
+  }
+
+  console.warn(`Unknown scaleType ${scaleType}`);
+
+  return undefined;
+}
+
+export default function extractScale<Def extends ChannelDef>(
   channelType: ChannelType,
-  definition: ChannelDef<Output>,
+  definition: Def,
   namespace?: string,
-) {
+): ScaleAgent<ExtractChannelOutput<Def>> | undefined {
   if (isNonValueDef(definition)) {
-    const scaleConfig =
-      'scale' in definition && typeof definition.scale !== 'undefined' ? definition.scale : {};
+    type Output = ExtractChannelOutput<Def>;
+    const scaleConfig: Scale<Output> = ('scale' in definition &&
+    typeof definition.scale !== 'undefined'
+      ? definition.scale
+      : {}) as Scale<Output>;
 
     // return if scale is disabled
     if (isDisabled(scaleConfig)) {
@@ -213,7 +246,7 @@ export default function extractScale<Output extends Value>(
 
     if (typeof scaleType === 'undefined') {
       // If scale type is not defined, try to derive scale type from field type
-      const dataType = 'type' in definition ? definition.type : undefined;
+      const dataType = isTypedFieldDef(definition) ? definition.type : undefined;
       scaleType = deriveScaleTypeFromDataTypeAndChannelType(dataType, channelType);
 
       // If still do not have scale type, cannot create scale
@@ -222,7 +255,10 @@ export default function extractScale<Output extends Value>(
       }
     }
 
-    const scale = createScale(channelType, scaleType, { namespace, ...scaleConfig });
+    const scale = createScale<Output>(channelType, scaleType, {
+      namespace,
+      ...scaleConfig,
+    });
 
     if (scale) {
       const setDomain =
@@ -236,6 +272,7 @@ export default function extractScale<Output extends Value>(
           value: number | string | boolean | null | undefined | Date,
         ) => Output,
         scale,
+        scaleTypeCategory: getScaleTypeCategory(scaleType),
         setDomain,
       };
     }

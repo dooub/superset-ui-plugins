@@ -11,22 +11,19 @@ interface DataRow {
 }
 
 export default function transformProps(chartProps: ChartProps) {
-  const { width, height, formData, payload } = chartProps;
+  const { width, height, formData, queryData } = chartProps;
   const { colorScheme, xAxisLabel, xAxisFormat, yAxisLabel, yAxisFormat } = formData;
-  const data = payload.data as DataRow[];
+  const data = queryData.data as DataRow[];
 
   return {
-    data: {
-      keys: ['name', 'x', 'y'],
-      values: flatMap(
-        data.map((row: DataRow) =>
-          row.values.map(v => ({
-            ...v,
-            name: row.key[0],
-          })),
-        ),
+    data: flatMap(
+      data.map((row: DataRow) =>
+        row.values.map(v => ({
+          ...v,
+          name: row.key[0],
+        })),
       ),
-    },
+    ),
     width,
     height,
     encoding: {
@@ -54,7 +51,7 @@ export default function transformProps(chartProps: ChartProps) {
           title: yAxisLabel,
         },
       },
-      color: {
+      stroke: {
         field: 'name',
         type: 'nominal',
         scale: {
