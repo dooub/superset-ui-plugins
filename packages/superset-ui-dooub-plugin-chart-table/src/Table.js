@@ -62,9 +62,10 @@ const propTypes = {
 
 const formatValue = getNumberFormatter(NumberFormats.INTEGER);
 const formatPercent = getNumberFormatter(',%');
+
 function NOOP() {}
 
-function TableVis(element, props) {
+function AutoTable(element, props) {
   const {
     data,
     height,
@@ -102,6 +103,7 @@ function TableVis(element, props) {
 
     return arr;
   }
+
   const maxes = {};
   const mins = {};
   for (let i = 0; i < metrics.length; i += 1) {
@@ -124,8 +126,7 @@ function TableVis(element, props) {
         'table-condensed table-hover dataTable no-footer',
       true,
     )
-    .attr('width', '100%')
-    .style('table-layout', 'fixed');
+    .attr('width', '100%');
 
   table
     .append('thead')
@@ -143,22 +144,24 @@ function TableVis(element, props) {
     .enter()
     .append('tr')
     .selectAll('td')
-    .data(row =>
-      columns.map(({ key, format }) => {
+    .data(row => {
+      const rows = columns.map(({ key, format }) => {
         const val = row[key];
         let html;
         const isMetric = metrics.indexOf(key) >= 0;
+        let isPercentage = false;
         if (key === '__timestamp') {
           html = tsFormatter(val);
         }
         if (typeof val === 'string') {
-          html = `<span>${dompurify.sanitize(val)}</span>`;
+          html = `<span class="like-pre">${dompurify.sanitize(val)}</span>`;
         }
         if (isMetric) {
           html = getNumberFormatter(',d')(val);
         }
         if (key[0] === '%') {
           html = formatPercent(val);
+          isPercentage = true;
         }
 
         return {
@@ -166,42 +169,58 @@ function TableVis(element, props) {
           val,
           html,
           isMetric,
+          isPercentage,
         };
-      }),
-    )
+      });
+
+      let decimal;
+      for (let i = 0; i < Math.floor(rows.length / 2); i++) {
+        if (rows[i].isMetric || rows[i].isPercentage) {
+          if (decimal != null) {
+            rows[i].splice(i + 1, 0, {});
+            decimal = null;
+          } else {
+            decimal = rows[i];
+          }
+          continue;
+        }
+        decimal = null;
+      }
+
+      return rows;
+    })
     .enter()
     .append('td')
-    //.style('background-image', d => {
-    //  if (d.isMetric) {
-    //    const r = colorPositiveNegative && d.val < 0 ? 150 : 0;
-    //    if (alignPositiveNegative) {
-    //      const perc = Math.abs(Math.round((d.val / maxes[d.col]) * 100));
-    //
-    //      // The 0.01 to 0.001 is a workaround for what appears to be a
-    //      // CSS rendering bug on flat, transparent colors
-    //      return (
-    //        `linear-gradient(to right, rgba(${r},0,0,0.2), rgba(${r},0,0,0.2) ${perc}%, ` +
-    //        `rgba(0,0,0,0.01) ${perc}%, rgba(0,0,0,0.001) 100%)`
-    //      );
-    //    }
-    //    const posExtent = Math.abs(Math.max(maxes[d.col], 0));
-    //    const negExtent = Math.abs(Math.min(mins[d.col], 0));
-    //    const tot = posExtent + negExtent;
-    //    const perc1 = Math.round((Math.min(negExtent + d.val, negExtent) / tot) * 100);
-    //    const perc2 = Math.round((Math.abs(d.val) / tot) * 100);
-    //
-    //    // The 0.01 to 0.001 is a workaround for what appears to be a
-    //    // CSS rendering bug on flat, transparent colors
-    //    return (
-    //      `linear-gradient(to right, rgba(0,0,0,0.01), rgba(0,0,0,0.001) ${perc1}%, ` +
-    //      `rgba(${r},0,0,0.2) ${perc1}%, rgba(${r},0,0,0.2) ${perc1 + perc2}%, ` +
-    //      `rgba(0,0,0,0.01) ${perc1 + perc2}%, rgba(0,0,0,0.001) 100%)`
-    //    );
-    //  }
-    //
-    //  return null;
-    //})
-    .classed('overflow', d => typeof d.val === 'string')
+    .style('background-image', d => {
+      if (d.isMetric) {
+        const r = colorPositiveNegative && d.val < 0 ? 150 : 0;
+        if (alignPositiveNegative) {
+          const perc = Math.abs(Math.round((d.val / maxes[d.col]) * 100));
+
+          // The 0.01 to 0.001 is a workaround for what appears to be a
+          // CSS rendering bug on flat, transparent colors
+          return (
+            `linear-gradient(to right, rgba(${r},0,0,0.2), rgba(${r},0,0,0.2) ${perc}%, ` +
+            `rgba(0,0,0,0.01) ${perc}%, rgba(0,0,0,0.001) 100%)`
+          );
+        }
+        const posExtent = Math.abs(Math.max(maxes[d.col], 0));
+        const negExtent = Math.abs(Math.min(mins[d.col], 0));
+        const tot = posExtent + negExtent;
+        const perc1 = Math.round((Math.min(negExtent + d.val, negExtent) / tot) * 100);
+        const perc2 = Math.round((Math.abs(d.val) / tot) * 100);
+
+        // The 0.01 to 0.001 is a workaround for what appears to be a
+        // CSS rendering bug on flat, transparent colors
+        return (
+          `linear-gradient(to right, rgba(0,0,0,0.01), rgba(0,0,0,0.001) ${perc1}%, ` +
+          `rgba(${r},0,0,0.2) ${perc1}%, rgba(${r},0,0,0.2) ${perc1 + perc2}%, ` +
+          `rgba(0,0,0,0.01) ${perc1 + perc2}%, rgba(0,0,0,0.001) 100%)`
+        );
+      }
+
+      return null;
+    })
     .classed('text-right', d => d.isMetric || (d.html != null && d.html[d.html.length - 1] === '%'))
     .attr('title', d => {
       if (typeof d.val === 'string') {
@@ -269,7 +288,7 @@ function TableVis(element, props) {
   datatable.draw();
 }
 
-TableVis.displayName = 'TableVis';
-TableVis.propTypes = propTypes;
+AutoTable.displayName = 'AutoTable';
+AutoTable.propTypes = propTypes;
 
-export default TableVis;
+export default AutoTable;

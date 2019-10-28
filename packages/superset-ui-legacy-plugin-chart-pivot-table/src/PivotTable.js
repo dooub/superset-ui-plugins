@@ -73,6 +73,7 @@ function PivotTable(element, props) {
         const tdText = $(this)[0].textContent;
         if (!Number.isNaN(tdText) && tdText !== '' && tdText.trim().toLowerCase() !== 'null') {
           $(this)[0].textContent = formatNumber(format, tdText);
+          $(this)[0].classList.add('text-right');
           $(this).attr('data-sort', tdText);
         }
       });

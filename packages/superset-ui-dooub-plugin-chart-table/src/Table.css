@@ -29,9 +29,3 @@
 .like-pre {
   white-space: pre-wrap;
 }
-
-.overflow {
-  text-overflow:ellipsis;
-  overflow:hidden;
-  white-space: nowrap;
-}

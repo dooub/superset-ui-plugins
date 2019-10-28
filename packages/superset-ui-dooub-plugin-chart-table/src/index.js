@@ -16,22 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-.superset-legacy-chart-table {
-  margin: 0px !important;
-  background: transparent;
-  background-color: white;
-}
+import { t } from '@superset-ui/translation';
+import { ChartMetadata, ChartPlugin } from '@superset-ui/chart';
+import transformProps from './transformProps';
+import thumbnail from './images/thumbnail.png';
 
-.superset-legacy-chart-table thead th.sorting:after, table.table thead th.sorting_asc:after, table.table thead th.sorting_desc:after {
-  top: 0px;
-}
+const metadata = new ChartMetadata({
+  canBeAnnotationTypes: ['EVENT', 'INTERVAL'],
+  description: '',
+  name: t('AutoTable'),
+  thumbnail,
+  useLegacyApi: true,
+});
 
-.like-pre {
-  white-space: pre-wrap;
-}
-
-.overflow {
-  text-overflow:ellipsis;
-  overflow:hidden;
-  white-space: nowrap;
+export default class AutoTableChartPlugin extends ChartPlugin {
+  constructor() {
+    super({
+      loadChart: () => import('./ReactTable.js'),
+      metadata,
+      transformProps,
+    });
+  }
 }

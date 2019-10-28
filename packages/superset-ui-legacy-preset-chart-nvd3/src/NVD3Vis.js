@@ -356,6 +356,7 @@ function nvd3Vis(element, props) {
           width = computeBarChartWidth(data, isBarStacked, maxWidth);
         }
         chart.width(width);
+        chart.showYAxis(false);
         break;
 
       case 'pie':
@@ -769,9 +770,7 @@ function nvd3Vis(element, props) {
                     key,
                     color: a.color,
                     strokeWidth: a.width,
-                    classed: `${a.opacity} ${a.style} nv-timeseries-annotation-layer showMarkers${
-                      a.showMarkers
-                    } hideLine${a.hideLine}`,
+                    classed: `${a.opacity} ${a.style} nv-timeseries-annotation-layer showMarkers${a.showMarkers} hideLine${a.hideLine}`,
                   };
                 }),
               ),

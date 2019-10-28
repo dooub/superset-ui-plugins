@@ -16,22 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-.superset-legacy-chart-table {
-  margin: 0px !important;
-  background: transparent;
-  background-color: white;
-}
+import { reactify } from '@superset-ui/chart';
+import Component from './Table';
 
-.superset-legacy-chart-table thead th.sorting:after, table.table thead th.sorting_asc:after, table.table thead th.sorting_desc:after {
-  top: 0px;
-}
-
-.like-pre {
-  white-space: pre-wrap;
-}
-
-.overflow {
-  text-overflow:ellipsis;
-  overflow:hidden;
-  white-space: nowrap;
-}
+export default reactify(Component);

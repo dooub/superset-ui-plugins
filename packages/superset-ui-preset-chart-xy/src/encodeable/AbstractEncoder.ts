@@ -19,7 +19,7 @@ export default abstract class AbstractEncoder<
   readonly channelTypes: ChannelTypes;
   readonly spec: FullSpec<Encoding, Options>;
   readonly channels: {
-    readonly [k in keyof ChannelTypes]: ChannelEncoder<Encoding[k], Outputs[k]>
+    readonly [k in keyof ChannelTypes]: ChannelEncoder<Encoding[k], Outputs[k]>;
   };
 
   readonly legends: {
