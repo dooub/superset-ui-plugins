@@ -1,6 +1,6 @@
 {
   "name": "@superset-ui/legacy-plugin-chart-table",
-  "version": "0.11.0",
+  "version": "0.11.0-1",
   "description": "Superset Legacy Chart - Table",
   "sideEffects": [
     "*.css"
@@ -13,7 +13,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/apache-superset/superset-ui-plugins.git"
+    "url": "git+https://github.com/dooub/superset-ui-plugins.git"
   },
   "keywords": [
     "superset"
@@ -21,9 +21,9 @@
   "author": "Superset",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/apache-superset/superset-ui-plugins/issues"
+    "url": "https://github.com/dooub/superset-ui-plugins/issues"
   },
-  "homepage": "https://github.com/apache-superset/superset-ui-plugins#readme",
+  "homepage": "https://github.com/dooub/superset-ui-plugins#readme",
   "publishConfig": {
     "access": "public"
   },

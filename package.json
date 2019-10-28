@@ -22,6 +22,7 @@
     "pretest": "yarn run lint",
     "prettier": "beemo prettier \"./packages/*/{src,test,storybook}/**/*.{js,jsx,ts,tsx,json,md}\"",
     "release": "yarn run prepare-release && lerna publish && yarn run postrelease",
+    "release:dooub": "yarn build:debug && lerna publish",
     "test": "yarn run type && yarn run jest",
     "test:watch": "yarn run lint:fix && beemo create-config jest --react && jest --watch"
   },
